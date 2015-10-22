@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 
 import numpy as np
-import os
+import os,sys
 from Bio import SeqIO,SeqFeature
 from Bio.SeqRecord import SeqRecord
 from Bio import Phylo
 import re
+CURRENT_DIR = os.path.dirname(os.path.abspath('../Utilities/Utilities.py'))
+sys.path.append(os.path.dirname(CURRENT_DIR))
 import Utilities.Utilities as util
 import shutil
-import sys
+#import sys
 
 def filterGenomes(rootDir):
     filter_genomes_list = []
     for file in util.return_recursive_dir_files(rootDir):
+	    print file
             files = util.return_recursive_files(file)
             fileName = ""
             if len(files) > 1:
@@ -37,4 +40,6 @@ def main():
     filterGenomes(rootDir)
 
 if __name__ == "__main__":
+   # CURRENT_DIR = os.path.dirname(os.path.abspath('../Utilities/Utilities.py'))
+   # sys.path.append(os.path.dirname(CURRENT_DIR))
     main()
