@@ -1,14 +1,7 @@
 #!/usr/bin/env python
 
-import numpy as np
-from Bio import Phylo
-from PIL import Image
-from os.path import expanduser
-import os
-import ntpath
 import pickle
 import sys
-from gc import disable
 
 
 #PATH = "/home/jain/Gram_Positive_Bacteria_Study/Organisms_Lists_from_PATRIC/Firmicutes/analysis_after_filtering_strain/Run_filter_1e-06/"
@@ -59,7 +52,7 @@ def getConservedOperonsList(pickleObj,rootDir):
 
 def main():
     #print "Main"
-    rootDir = sys.argv[0];
+    rootDir = sys.argv[1];
     event_dist = pickle.load(open(rootDir+"/gene_block_distance_matrices/event_dict.p"))
     getConservedOperonsList(event_dist,rootDir)
 
