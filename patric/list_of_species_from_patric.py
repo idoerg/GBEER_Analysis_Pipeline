@@ -1,47 +1,53 @@
 #!/usr/bin/env python
 
-import numpy as np
 import os
+import sys
 from Bio import SeqIO,SeqFeature
-from Bio.SeqRecord import SeqRecord
-from Bio import Phylo
 import re
+CURRENT_DIR = os.path.dirname(os.path.abspath('../Utilities/Utilities.py'))
+sys.path.append(os.path.dirname(CURRENT_DIR))
 import Utilities.Utilities as util
 import shutil
-import sys
-from atk import Util
 
-def getSpeciesListFromPATRIC():
+##This function filter the species with complete genome from PATRIC.
+##This will also creates a new genome data folder for the family and filter out the strains
+def getSpeciesListFromPATRIC(genomeFinderFilePath,bacterialGenomeDBPath,familyDBPath):
     genomeAccesionDict = {}
     genomePathDict = {}    
-    genomeFinder = open("/home/jain/Gram_Positive_Bacteria_Study/Organisms_Lists_from_PATRIC/Firmicutes/GenomeFinder.txt","r")
+    genomeFinder = open(genomeFinderFilePath,"r")
     for line in genomeFinder:
         lineData = line.split("\t")
         genomeName = lineData[1].strip()
         genomeStatus = lineData[21].strip()
         accession = lineData[19].strip() 
-        if(genomeStatus.trim().equals("complete") and (not accession.trim().equals("-")) and (not accession.trim().equals(""))):
-            genomeAccesionDict.update({accession, genomeName})
+        if(genomeStatus.strip()=="complete" and (not accession.strip()=="-") and (not accession.strip()=="")):
+            genomeAccesionDict.update({accession:genomeName})
                 
     genomeFinder.close()
     #out = open("/home/jain/Gram_Positive_Bacteria_Study/Organisms_Lists_from_PATRIC/Firmicutes/genomeAccessionMapfromPATRIC.txt","w")
     #out.write("Accession Number\tOrganism Name\n")
     for key,value in genomeAccesionDict.iteritems():
-        genomePathDict.update({key,"null"})
+        genomePathDict.update({key:"null"})
         #out.write(key+"\t"+value+"\n")
     #out.close()
-    genomesPath = util.return_recursive_dir_files("/home/jain/Bacterial_Genomic_Data_NCBI/")
+    genomesPath = util.return_recursive_dir_files(bacterialGenomeDBPath)
     genomePathDict = searchGenomes(genomesPath, genomeAccesionDict, genomePathDict)
     #Copy files to a new folder
-    finalDir = "/home/jain/NewGenomePath"
+    finalDir = familyDBPath
+    #print genomePathDict
     for key,value in genomePathDict.iteritems():
         if value != "null":
-            shutil.copytree(value, finalDir)
+            #print value
+            name = value.split("/")[len(value.split("/"))-1]
+            shutil.copytree(value, finalDir+"/"+name)
     #Filter For Strains
     distinctSpeciesGenomeLocationDict = filterStrainsByFolderName(finalDir)
+    #print len(distinctSpeciesGenomeLocationDict)
     deleteDir(finalDir, distinctSpeciesGenomeLocationDict)
-    distinctSpeciesDict = filterStrain(distinctSpeciesGenomeLocationDict);
-    deleteDir(finalDir, distinctSpeciesDict)
+    filterStrain(distinctSpeciesGenomeLocationDict)
+    #distinctSpeciesDict = filterStrain(distinctSpeciesGenomeLocationDict);
+    #print len(distinctSpeciesDict)
+    #deleteDir(finalDir, distinctSpeciesDict)
     
     
     
@@ -53,14 +59,15 @@ def searchGenomes(genomesPath,genomeAccesionDict,genomePathDict):
             accession = ""
             for key in genomeAccesionDict.iterkeys():
                 accessions = key.strip().split(",")
+                #print accessions
                 for a in accessions:
                     if "." in a:
                         accession = a.split(".")[0]
                     else:
                         accession = a
-                if(accession in fileName):
-                    genomePathDict.update({accessions,genome})
-                break
+                    if(accession in fileName):
+                        genomePathDict.update({key:genome})
+                        break
     return genomePathDict
 
 def filterStrainsByFolderName(finalDir):
@@ -73,9 +80,10 @@ def filterStrainsByFolderName(finalDir):
         if distinctSpeciesGenomeLocationDict.has_key(strainName):
             lastOrgPath = distinctSpeciesGenomeLocationDict[strainName]
             newOrgPath = checkAccession(lastOrgPath,dir)
-            distinctSpeciesGenomeLocationDict.update({strainName,newOrgPath})
+            distinctSpeciesGenomeLocationDict.update({strainName:newOrgPath})
         else:
-            distinctSpeciesGenomeLocationDict.update({strainName,dir})    
+            distinctSpeciesGenomeLocationDict.update({strainName:dir})
+    return  distinctSpeciesGenomeLocationDict   
                
 def filterStrain(distinctSpeciesGenomeLocationDict):
     distinctSpeciesDict = {}
@@ -85,7 +93,7 @@ def filterStrain(distinctSpeciesGenomeLocationDict):
         folderPath = value;
         #print folderPath
         #print str(return_recursive_files(folderPath)) + "\n"
-        print strainName
+        #print strainName
         for f in util.return_recursive_files(folderPath):
             seq_record = SeqIO.parse(open(f), "genbank").next()
             accession = seq_record.annotations['accessions'][0]
@@ -98,12 +106,15 @@ def filterStrain(distinctSpeciesGenomeLocationDict):
                 old_record = SeqIO.parse(open(oldFilePath), "genbank").next()
                 old_accession = old_record.annotations['accessions'][0]
                 if(old_accession > accession):
+                    shutil.rmtree(os.path.dirname(oldFilePath))
                     distinctSpeciesDict.update({organism:f})
+                else:
+                    shutil.rmtree(os.path.dirname(f))
             else:
                 distinctSpeciesDict.update({organism:f})
-    for key,value in distinctSpeciesDict.iteritems():
-        distinctSpeciesDict_1.update({key,os.path.dirname(value)})
-    return distinctSpeciesDict_1
+    #for key,value in distinctSpeciesDict.iteritems():
+        #distinctSpeciesDict_1.update({key:os.path.dirname(value)})
+    #return distinctSpeciesDict_1
             
 def checkAccession(lastOrgPath,newPath):
     lastOrgFile = util.return_recursive_files(lastOrgPath)[0]
@@ -125,12 +136,14 @@ def deleteDir(finalDir,distinctSpeciesGenomeLocationDict):
                 shutil.rmtree(d)
         else:
             #shutil.rmtree(d)
-            print "not matching"
+            print "not matching "+strainName 
         
 
 def main():
-    #rootDir = sys.argv[0];
-    getSpeciesListFromPATRIC()
+    genomeFinderFilePath = sys.argv[1]
+    bacterialGenomeDBPath = sys.argv[2]
+    familyDBPath = sys.argv[3]
+    getSpeciesListFromPATRIC(genomeFinderFilePath,bacterialGenomeDBPath,familyDBPath)
 
 if __name__ == "__main__":
     main()
