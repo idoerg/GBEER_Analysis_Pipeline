@@ -5,7 +5,7 @@ import sys
 
 
 #PATH = "/home/jain/Gram_Positive_Bacteria_Study/Organisms_Lists_from_PATRIC/Firmicutes/analysis_after_filtering_strain/Run_filter_1e-06/"
-def getConservedOperonsList(pickleObj,rootDir):
+def getConservedOperonsList(pickleObj,rootDir,threshold):
     #print pickleObj.keys()[0]
     #print pickleObj[pickleObj.keys()[1]]
     operonDistanceDict = {}
@@ -44,7 +44,7 @@ def getConservedOperonsList(pickleObj,rootDir):
     handle = open(rootDir+"/conservedOperonsSorted.txt","w")
     handle.write("Operon Name\tTotal C.Score\tDeletion C.Score\tSplits C.Score\tDuplications C.Score\n")
     for operon in sorted(operonTotalConsDict.items(), key=lambda x: x[1]):
-        if(operonKeysDict[operon[0]] >=30):
+        if(operonKeysDict[operon[0]] >=threshold):
             operonName = operon[0]
             handle.write("%s\t%.4f\t%.4f\t%.4f\t%.4f" % (operonName,operon[1],operonEventConsDict[operonName]['deletions'],operonEventConsDict[operonName]['splits'],operonEventConsDict[operonName]['duplications']))
             handle.write("\n")
@@ -52,9 +52,10 @@ def getConservedOperonsList(pickleObj,rootDir):
 
 def main():
     #print "Main"
-    rootDir = sys.argv[1];
+    rootDir = sys.argv[1]
+    threshold = int(sys.argv[2])
     event_dist = pickle.load(open(rootDir+"/gene_block_distance_matrices/event_dict.p"))
-    getConservedOperonsList(event_dist,rootDir)
+    getConservedOperonsList(event_dist,rootDir,threshold)
 
 if __name__ == "__main__":
     main()
