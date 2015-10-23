@@ -34,14 +34,12 @@ def parser_code():
     parser.add_argument("-n", "--num_proc", dest="num_proc", metavar="INT", default = os.sysconf("SC_NPROCESSORS_CONF"), type=int,
                 help="Number of processors that you want this script to run on. The default is every CPU that the system has.")
                 
-    parser.add_argument("-d", "--download", dest="download", action="store_false", default=True,
-                help="Add this option if you wish to download the regulonDB operon, otherwise the program will assume that you have already done this step.")
+    #parser.add_argument("-d", "--download", dest="download", action="store_false", default=True,help="Add this option if you wish to download the regulonDB operon, otherwise the program will assume that you have already done this step.")
     
-    parser.add_argument("-u", "--url", dest="url", default='http://regulondb.ccg.unam.mx/menu/download/datasets/files/OperonSet.txt', metavar="URL",
-                help="URL to the regulondb OperonSet.txt file.")
+    parser.add_argument("-d", "--data", dest="dataFile",metavar="FILE",help="This is the operon file downloaded from the ProOpDB.")
+    #parser.add_argument("-u", "--url", dest="url", default='http://regulondb.ccg.unam.mx/menu/download/datasets/files/OperonSet.txt', metavar="URL",help="URL to the regulondb OperonSet.txt file.")
     
-    parser.add_argument("-e", "--experimantal_only", dest="experimental_only", action="store_false", default=True,
-                help="Add this option if you wish to use non-experimentally determined operons.")
+    #parser.add_argument("-e", "--experimantal_only", dest="experimental_only", action="store_false", default=True,help="Add this option if you wish to use non-experimentally determined operons.")
     
     parser.add_argument("-m", "--min_genes", dest="min_genes", metavar="INT", default = 5, type=int,
                 help="Minum number of genes that a gene block must contain before it can be considered for further analysis. The default is 5 because that is what we are currently using in the study.")
@@ -89,12 +87,12 @@ def check_options(parsed_args):
         min_genes = parsed_args.min_genes
     
         
-    download = parsed_args.download
-    url = parsed_args.url
-    experimental_only = parsed_args.experimental_only
+    dataFile = parsed_args.dataFile
+    #url = parsed_args.url
+    #experimental_only = parsed_args.experimental_only
     quiet = parsed_args.quiet
 
-    return infolder, outfolder, filter_file, num_proc, download, url, experimental_only, min_genes, quiet
+    return infolder, outfolder, filter_file, num_proc, dataFile, min_genes, quiet
 
 
 #this function will return all of the files that are in a directory. os.walk is recursive traversal.
@@ -168,8 +166,8 @@ def regulon_db(outfolder, number_of_genes, url, download, experimantal, outfile)
     handle.write('\n'.join(['\t'.join(i) for i in result]))
     handle.close()
 
-def ProOpDB_Operons(outfolder, number_of_genes, url, download, experimantal, outfile):
-    url_outfile = outfolder +"B.Subtilis_Operons_ProOpDB.txt"
+def ProOpDB_Operons(outfolder, number_of_genes, dataFile, outfile):
+    url_outfile = dataFile
     operons_gene_dict = {}
     locus_operon_map = {}
     filtered_operon_gene_list = {}
@@ -200,8 +198,8 @@ def ProOpDB_Operons(outfolder, number_of_genes, url, download, experimantal, out
         handle.write(s+"\n")
     handle.close()
     
-def ODB_Operons(outfolder, number_of_genes, url, download, experimantal, outfile):
-    url_outfile = outfolder +"known_operon.download_ODB.txt"
+def ODB_Operons(outfolder, number_of_genes, dataFile, outfile):
+    url_outfile = dataFile
     result = [];
     for line in [i.strip() for i in open(url_outfile).readlines()]:
         lineData = line.split("\t")
@@ -248,7 +246,7 @@ def return_genbank_dict(gb_file, key = 'annotation', seq_type = 'amino_acid'):
                     locus = feature.qualifiers['gene'][0]
                 except:
                     locus = ''
-                    print "No locus associated with a reported feature in accession %s This should never be invoked meaning the gbk file has an error." % accession
+                    #print "No locus associated with a reported feature in accession %s This should never be invoked meaning the gbk file has an error." % accession
             try: 
                 gene = feature.qualifiers['gene'][0]
             except:
@@ -300,14 +298,14 @@ def parallel_genome_dict(genome):
     return (organism, org_dict)
 
 
-def parse_regulonDB_file_and_store_results(outfolder, min_genes, url, download, experimental_only, organism_dict_for_recovery, quiet):
+def parse_regulonDB_file_and_store_results(outfolder, min_genes, dataFile, organism_dict_for_recovery, quiet):
     #outfile = outfolder + 'gene_block_names_and_genes_unfiltered.txt'
     unfiltered_regulong_parsed_file = outfolder + 'gene_block_names_and_genes_unfiltered.txt'
-    if download:
+    #if download:
         #print "Download"
         #regulon_db(outfile, min_genes, url, download, experimental_only)
         #regulon_db(outfolder, min_genes, url, download, experimental_only, unfiltered_regulong_parsed_file)
-        ProOpDB_Operons(outfolder, min_genes, url, download, experimental_only, unfiltered_regulong_parsed_file)
+    ProOpDB_Operons(outfolder, min_genes,dataFile, unfiltered_regulong_parsed_file)
         #ODB_Operons(outfolder, min_genes, url, download, experimental_only, unfiltered_regulong_parsed_file)
     
     protein_only_list = []
@@ -434,9 +432,9 @@ def main():
 
     parsed_args = parser_code()
     
-    infolder, outfolder, filter_file, num_proc, download, url, experimental_only, min_genes, quiet = check_options(parsed_args)
+    infolder, outfolder, filter_file, num_proc, dataFile, min_genes, quiet = check_options(parsed_args)
     if not quiet:
-        print infolder, outfolder, filter_file, num_proc, download, url, experimental_only, min_genes, quiet
+        print infolder, outfolder, filter_file, num_proc, dataFile, min_genes, quiet
 
     if filter_file == 'NONE':
         genbank_list = returnRecursiveDirFiles(infolder)
@@ -446,7 +444,7 @@ def main():
     pool = Pool(processes = num_proc)
     organism_dict_for_recovery = dict(pool.map(parallel_genome_dict, genbank_list))
 
-    parse_regulonDB_file_and_store_results(outfolder, min_genes, url, download, experimental_only, organism_dict_for_recovery, quiet)
+    parse_regulonDB_file_and_store_results(outfolder, min_genes, dataFile, organism_dict_for_recovery, quiet)
     
     if not quiet:
         print time.time() - start
