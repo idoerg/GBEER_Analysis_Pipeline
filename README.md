@@ -1,4 +1,4 @@
-# GBEER_Analysis_Pipeline
+# GBEER Analysis Pipeline
 
 Requirements:
 Python 2.7 or above.
